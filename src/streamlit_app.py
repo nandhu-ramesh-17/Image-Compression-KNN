@@ -1,40 +1,32 @@
-import altair as alt
-import numpy as np
-import pandas as pd
 import streamlit as st
+from PIL import Image
+import numpy as np
+from sklearn.cluster import KMeans
 
-"""
-# Welcome to Streamlit!
+st.title("K-Means Image Compressor")
+st.write("Upload an image and choose number of clusters to compress it.")
 
-Edit `/streamlit_app.py` to customize this app to your heart's desire :heart:.
-If you have any questions, checkout our [documentation](https://docs.streamlit.io) and [community
-forums](https://discuss.streamlit.io).
+# Image upload
+uploaded_image = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
 
-In the meantime, below is an example of what you can do with just a few lines of code:
-"""
+# Cluster count
+k = st.slider("Number of Clusters (K)", min_value=2, max_value=124, value=16)
 
-num_points = st.slider("Number of points in spiral", 1, 10000, 1100)
-num_turns = st.slider("Number of turns in spiral", 1, 300, 31)
+# Process and display
+if uploaded_image is not None:
+    image = Image.open(uploaded_image).convert("RGB")
+    st.image(image, caption="Original Image", use_column_width=True)
 
-indices = np.linspace(0, 1, num_points)
-theta = 2 * np.pi * num_turns * indices
-radius = indices
+    image_np = np.array(image)
+    pixels = image_np.reshape(-1, 3)
 
-x = radius * np.cos(theta)
-y = radius * np.sin(theta)
+    kmeans = KMeans(n_clusters=k, random_state=42)
+    kmeans.fit(pixels)
 
-df = pd.DataFrame({
-    "x": x,
-    "y": y,
-    "idx": indices,
-    "rand": np.random.randn(num_points),
-})
+    centers = kmeans.cluster_centers_.astype("uint8")
+    labels = kmeans.labels_
 
-st.altair_chart(alt.Chart(df, height=700, width=700)
-    .mark_point(filled=True)
-    .encode(
-        x=alt.X("x", axis=None),
-        y=alt.Y("y", axis=None),
-        color=alt.Color("idx", legend=None, scale=alt.Scale()),
-        size=alt.Size("rand", legend=None, scale=alt.Scale(range=[1, 150])),
-    ))
+    compressed_image = centers[labels].reshape(image_np.shape)
+    compressed_pil = Image.fromarray(compressed_image)
+
+    st.image(compressed_pil, caption="Compressed Image", use_column_width=True)
