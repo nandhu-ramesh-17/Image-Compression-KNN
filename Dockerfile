@@ -13,6 +13,9 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt ./
 COPY src/ ./src/
 
+RUN mkdir -p /app/.streamlit && chmod -R 777 /app/.streamlit
+COPY .streamlit /app/.streamlit
+
 RUN pip3 install -r requirements.txt
 
 EXPOSE 8501
