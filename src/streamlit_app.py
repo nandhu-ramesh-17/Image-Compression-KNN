@@ -2,31 +2,58 @@ import streamlit as st
 from PIL import Image
 import numpy as np
 from sklearn.cluster import KMeans
+import io
 
-st.title("K-Means Image Compressor")
-st.write("Upload an image and choose number of clusters to compress it.")
+st.set_page_config(page_title="K-Means Image Compressor")
 
-# Image upload
-uploaded_image = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+st.title("🎨 K-Means Image Compressor")
+st.markdown("""
+Upload an image and compress it using **K-Means clustering**.  
+- **More clusters** = better quality, less compression  
+- **Fewer clusters** = higher compression, less quality  
+""")
 
-# Cluster count
-k = st.slider("Number of Clusters (K)", min_value=2, max_value=124, value=16)
+# Upload the image
+uploaded_image = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
 
-# Process and display
-if uploaded_image is not None:
+# Input: Number of clusters
+k = st.number_input("Number of Clusters (K)", min_value=2, max_value=128, value=16, step=1)
+
+if uploaded_image and st.button("🚀 Compress Image"):
+    # Load original image
     image = Image.open(uploaded_image).convert("RGB")
-    st.image(image, caption="Original Image", use_column_width=True)
-
     image_np = np.array(image)
     pixels = image_np.reshape(-1, 3)
 
+    # Apply KMeans clustering
     kmeans = KMeans(n_clusters=k, random_state=42)
     kmeans.fit(pixels)
 
-    centers = kmeans.cluster_centers_.astype("uint8")
+    compressed_colors = kmeans.cluster_centers_.astype("uint8")
     labels = kmeans.labels_
+    compressed_np = compressed_colors[labels].reshape(image_np.shape)
+    compressed_image = Image.fromarray(compressed_np)
 
-    compressed_image = centers[labels].reshape(image_np.shape)
-    compressed_pil = Image.fromarray(compressed_image)
+    # Display both images side-by-side
+    st.subheader("📸 Results")
+    col1, col2 = st.columns(2)
 
-    st.image(compressed_pil, caption="Compressed Image", use_column_width=True)
+    with col1:
+        st.markdown("**Original Image**")
+        st.image(image, use_column_width=True)
+
+    with col2:
+        st.markdown("**Compressed Image**")
+        st.image(compressed_image, use_column_width=True)
+
+    # Save to BytesIO and offer download
+    buffer = io.BytesIO()
+    compressed_image.save(buffer, format="PNG")
+    buffer.seek(0)
+
+    st.download_button(
+        label="💾 Download Compressed Image",
+        data=buffer,
+        file_name="compressed_image.png",
+        mime="image/png"
+    )
